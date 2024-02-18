@@ -15,8 +15,9 @@ const
   State_Next = 0; { 0..9 control states }
   State_Intro = 10; { 10..99 app states }
   State_Menu = 11;
-  State_Demo = 12;
-  State_Quit = 13;
+  State_Demo1 = 12;
+  State_Demo2 = 13;
+  State_Quit = 14;
 
 type
   TScreenBuffer = array[1..ScreenSize] of Word;
@@ -26,6 +27,7 @@ var
   LastFrameTime: LongInt;
   State: Byte;
   DemoTime: Real;
+  RowNo: Integer;
   MenuPosition: Byte;
   FColor,BColor: Byte;
   AscFile: Text;
@@ -108,7 +110,8 @@ begin
     State_Menu:
       begin
         Case MenuPosition of
-          0: ChangeState(State_Demo);
+          0: ChangeState(State_Demo1);
+          1: ChangeState(State_Demo2);
           2: ChangeState(State_Quit);
         end;
       end;
@@ -141,11 +144,24 @@ begin
   end;
 end;
 
+procedure Demo2;
+var
+  X,Y,Value: Integer;
+begin
+  Y:=Round(RowNo) mod ScreenHeight;
+  for X := 0 to ScreenWidth - 1 do
+  begin
+    Value := Round(8.0 + (8.0 * Sin(X / 4.0) * Cos(0.1*DemoTime + Y / 16.0)));
+    OffscreenBuffer[Y * ScreenWidth + X] := (Black shl 12) or (Value shl 8) or Ord(177);
+  end;
+end;
+
 begin
   ClrScr;
   ClearBuffer;
   State := State_Intro;
   DemoTime := 0.0;
+  RowNo:=0;
   MenuPosition := 0;
   FColor := 15;
   BColor := 0;
@@ -170,10 +186,10 @@ begin
 
           FColor := 3;
           if MenuPosition = 0 then FColor := 13;
-          WriteBuf('   Start DEMO', 10, 9);
+          WriteBuf('   Start DEMO 1', 10, 9);
           FColor := 3;
           if MenuPosition = 1 then FColor := 13;
-          Writebuf('   Empty',10,10);
+          Writebuf('   DEMO 2',10,10);
           FColor := 3;
           if MenuPosition = 2 then FColor := 13;
           Writebuf('   Quit',10,11);
@@ -183,7 +199,7 @@ begin
           FColor := 3;
           WriteBuf('Use [ARROWS] and [ENTER] for selecton or [ESC] to Quit.',10,23);
         end;
-      State_Demo:
+      State_Demo1:
         begin
           OffScreenBuffer[Random(ScreenSize)] := (Black shl 12) or (White shl 8) or ord(176+Random(48));
           FColor := 8;
@@ -196,12 +212,14 @@ begin
           FColor := 14;
           WriteBuf('FreeDOS rocks!', 35 + Round(Sin(DemoTime*0.6)*25),12 + Round(Cos(DemoTime*0.7)*10));
         end;
+      State_Demo2: Demo2;
       State_Quit: halt;
     end;
 
     CopyBufferToScreen;
     CheckForKeyPress;
     DemoTime := DemoTime + 0.025;
+    Inc(RowNo);
   Until False;
 
 end.
