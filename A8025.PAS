@@ -16,8 +16,7 @@ const
   State_Intro = 10; { 10..99 app states }
   State_Menu = 11;
   State_Demo = 12;
-  State_Outro = 13;
-  State_Quit = 14;
+  State_Quit = 13;
 
 type
   TScreenBuffer = array[1..ScreenSize] of Word;
@@ -45,21 +44,19 @@ var
   i: Integer;
 begin
   for i := 1 to ScreenSize do
-    MemW[$B800:0 + (i-1) * 2] := OffScreenBuffer[i];
+MemW[$B800:0 + (i-1) * 2] := OffScreenBuffer[i];
 end;
-
-
 
 procedure ChangeState(target: Byte);
 begin
   if target = State_Next then
-    begin
-      Inc(State);
-    end
+  begin
+    Inc(State);
+  end
   else
-    begin
-      State := target;
-    end;
+  begin
+    State := target;
+  end;
 
   ClearBuffer;
 end;
@@ -80,21 +77,21 @@ procedure WriteAscFile(const FileName: string; PosX,PosY: Byte);
 var
   X, Y, AscWidth, AscHeight: Byte;
 begin
-     Assign(AscFile, FileName);
-     Reset(AscFile);
+  Assign(AscFile, FileName);
+  Reset(AscFile);
 
-     ReadLn(AscFile, AscWidth, AscHeight);
+  ReadLn(AscFile, AscWidth, AscHeight);
 
-     for y := PosY to PosY+AscHeight do
-     begin
-       ReadLn(AscFile, AscLine);
-       WriteBuf(AscLine, PosX, PosY+y);
-     end;
+  for y := PosY to PosY+AscHeight do
+  begin
+    ReadLn(AscFile, AscLine);
+    WriteBuf(AscLine, PosX, PosY+y);
+  end;
 
-     Close(AscFile);
+  Close(AscFile);
 end;
 
-procedure CursorMove(X,Y:Integer);
+procedure CursorPressed(X,Y:Integer);
 begin
   Case State of
     State_Menu:
@@ -102,10 +99,10 @@ begin
         if (MenuPosition + Y >= 0) and (MenuPosition+Y<3) then
           MenuPosition := (MenuPosition + Y)
       end;
-    end;
+  end;
 end;
 
-procedure ReturnHit;
+procedure EnterPressed;
 begin
   Case State of
     State_Menu:
@@ -119,6 +116,13 @@ begin
   end;
 end;
 
+procedure EscPressed;
+begin
+  if State = State_Menu then
+    halt;
+  ChangeState(State_Menu);
+end;
+
 procedure CheckForKeyPress;
 var
   key: char;
@@ -127,17 +131,12 @@ begin
   begin
     key := ReadKey;
     Case key of
-      #27:
-        begin
-          if State = State_Menu then
-             halt;
-          ChangeState(State_Menu);
-        end;
-      #13: ReturnHit;
-      #72: CursorMove(0,-1);
-      #80: CursorMove(0,1);
-      #75: CursorMove(-1,0);
-      #77: CursorMove(1,0);
+      #27: EscPressed;
+      #13: EnterPressed;
+      #72: CursorPressed(0,-1);
+      #80: CursorPressed(0,1);
+      #75: CursorPressed(-1,0);
+      #77: CursorPressed(1,0);
     end;
   end;
 end;
@@ -178,15 +177,12 @@ begin
           FColor := 3;
           if MenuPosition = 2 then FColor := 13;
           Writebuf('   Quit',10,11);
-
           FColor := 13;
           Writebuf(Chr(196)+Chr(175),10,9+MenuPosition);
 
           FColor := 3;
           WriteBuf('Use [ARROWS] and [ENTER] for selecton or [ESC] to Quit.',10,23);
-
         end;
-      State_Outro:  WriteBuf('Bye! Have a nice day.',10,5);
       State_Demo:
         begin
           OffScreenBuffer[Random(ScreenSize)] := (Black shl 12) or (White shl 8) or ord(176+Random(48));
@@ -195,7 +191,7 @@ begin
 
           FColor := 12;
           WriteAscFile('A.ASC', 5+30+Round(Sin((DemoTime-0.1)*0.6)*30), 5);
-          
+
 
           FColor := 14;
           WriteBuf('FreeDOS rocks!', 35 + Round(Sin(DemoTime*0.6)*25),12 + Round(Cos(DemoTime*0.7)*10));
