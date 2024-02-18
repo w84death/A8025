@@ -17,13 +17,15 @@ const
   State_Menu = 11;
   State_Demo1 = 12;
   State_Demo2 = 13;
-  State_Quit = 14;
+  State_Fire = 14;
+  State_Quit = 15;
 
 type
   TScreenBuffer = array[1..ScreenSize] of Word;
-
+  TFireBuffer = array[1..ScreenSize] of Byte;
 var
   OffScreenBuffer: TScreenBuffer;
+  FireBuffer: TFireBuffer;
   LastFrameTime: LongInt;
   State: Byte;
   DemoTime: Real;
@@ -32,6 +34,7 @@ var
   FColor,BColor: Byte;
   AscFile: Text;
   AscLine: string;
+
 
 procedure ClearBuffer;
 var
@@ -98,7 +101,7 @@ begin
   Case State of
     State_Menu:
       begin
-        if (MenuPosition + Y >= 0) and (MenuPosition+Y<3) then
+        if (MenuPosition + Y >= 0) and (MenuPosition+Y<4) then
           MenuPosition := (MenuPosition + Y)
       end;
   end;
@@ -112,7 +115,8 @@ begin
         Case MenuPosition of
           0: ChangeState(State_Demo1);
           1: ChangeState(State_Demo2);
-          2: ChangeState(State_Quit);
+          2: ChangeState(State_Fire);
+          3: ChangeState(State_Quit);
         end;
       end;
     State_Intro: ChangeState(State_Next);
@@ -156,9 +160,61 @@ begin
   end;
 end;
 
+procedure ClearFireBuffer;
+var
+  i: Integer;
+begin
+  for i := 1 to ScreenSize do
+    FireBuffer[i] := 0;
+end;
+
+procedure RenderFire;
+var
+  x, y: Integer;
+  randI, new: Integer;
+  fireChars: array[0..7] of Char;
+  fireColors: array[0..7] of Byte;
+begin
+  fireChars[0] := ' ';
+  fireChars[1] := '.';
+  fireChars[2] := '*';
+  fireChars[3] := 'o';
+  fireChars[4] := 'O';
+  fireChars[5] := '@';
+  fireChars[6] := '&';
+  fireChars[7] := '#';
+  fireColors[0] := 8;
+  fireColors[1] := 8;
+  fireColors[2] := 4;
+  fireColors[3] := 4;
+  fireColors[4] := 8;
+  fireColors[5] := 12;
+  fireColors[6] := 14;
+  fireColors[7] := 15;
+
+
+  if Round(DemoTime*100) mod 10 = 0 then
+  begin
+    FireBuffer[1930+Random(60)]:=4+Random(4);
+    FireBuffer[1920+Random(80)]:=0;
+  end;
+
+  for y := 0 to ScreenHeight - 2 do
+    for x := 0 to ScreenWidth - 1 do
+    begin
+      randI := (y + 1) * ScreenWidth + x + Random(3) - 1;
+      new := FireBuffer[randI] - (Random(2) and 1);
+      if new < 0 then new := 0;
+      FireBuffer[y * ScreenWidth + x] := new;
+      OffscreenBuffer[y * ScreenWidth + x] := (Black shl 12) or (fireColors[new] shl 8) or Ord(fireChars[new]);
+    end;
+end;
+
+
 begin
   ClrScr;
   ClearBuffer;
+  ClearFireBuffer;
   State := State_Intro;
   DemoTime := 0.0;
   RowNo:=0;
@@ -192,7 +248,10 @@ begin
           Writebuf('   DEMO 2',10,10);
           FColor := 3;
           if MenuPosition = 2 then FColor := 13;
-          Writebuf('   Quit',10,11);
+          Writebuf('   FIRE',10,11);
+          FColor := 3;
+          if MenuPosition = 3 then FColor := 13;
+          Writebuf('   Quit',10,12);
           FColor := 13;
           Writebuf(Chr(196)+Chr(175),10,9+MenuPosition);
 
@@ -213,6 +272,7 @@ begin
           WriteBuf('FreeDOS rocks!', 35 + Round(Sin(DemoTime*0.6)*25),12 + Round(Cos(DemoTime*0.7)*10));
         end;
       State_Demo2: Demo2;
+      State_Fire: RenderFire;
       State_Quit: halt;
     end;
 
