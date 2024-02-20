@@ -16,7 +16,7 @@ const
   State_Intro = 10; { 10..99 app states }
   State_Menu = 11;
   State_Demo1 = 12;
-  State_Demo2 = 13;
+  State_Rainbow = 13;
   State_Fire = 14;
   State_Quit = 15;
 
@@ -114,7 +114,7 @@ begin
       begin
         Case MenuPosition of
           0: ChangeState(State_Demo1);
-          1: ChangeState(State_Demo2);
+          1: ChangeState(State_Rainbow);
           2: ChangeState(State_Fire);
           3: ChangeState(State_Quit);
         end;
@@ -148,15 +148,21 @@ begin
   end;
 end;
 
-procedure Demo2;
+procedure RenderRainbow;
 var
   X,Y,Value: Integer;
+  zoom,speed: Real;
 begin
-  Y:=Round(RowNo) mod ScreenHeight;
-  for X := 0 to ScreenWidth - 1 do
+  zoom := 0.006;
+  speed := 4;
+  Y:=Round(RowNo*16) mod ScreenHeight;
+  for X := 1 to ScreenWidth  do
   begin
-    Value := Round(8.0 + (8.0 * Sin(X / 4.0) * Cos(0.1*DemoTime + Y / 16.0)));
-    OffscreenBuffer[Y * ScreenWidth + X] := (Black shl 12) or (Value shl 8) or Ord(177);
+    if X mod 2 = 0 then
+    begin
+    Value := Round( (X)*(32+(Y+DemoTime)*speed)*zoom) mod 16;
+    OffscreenBuffer[Y * ScreenWidth + X] := (Black shl 12) or (8+(Value mod 8) shl 8) or Ord(219);
+  end;
   end;
 end;
 
@@ -177,17 +183,17 @@ var
 begin
   fireChars[0] := ' ';
   fireChars[1] := '.';
-  fireChars[2] := '*';
-  fireChars[3] := 'o';
+  fireChars[2] := ',';
+  fireChars[3] := '%';
   fireChars[4] := 'O';
   fireChars[5] := '@';
-  fireChars[6] := '&';
+  fireChars[6] := '8';
   fireChars[7] := '#';
   fireColors[0] := 8;
   fireColors[1] := 8;
   fireColors[2] := 4;
   fireColors[3] := 4;
-  fireColors[4] := 8;
+  fireColors[4] := 4;
   fireColors[5] := 12;
   fireColors[6] := 14;
   fireColors[7] := 15;
@@ -245,7 +251,7 @@ begin
           WriteBuf('   Start DEMO 1', 10, 9);
           FColor := 3;
           if MenuPosition = 1 then FColor := 13;
-          Writebuf('   DEMO 2',10,10);
+          Writebuf('   RAINBOW',10,10);
           FColor := 3;
           if MenuPosition = 2 then FColor := 13;
           Writebuf('   FIRE',10,11);
@@ -271,7 +277,7 @@ begin
           FColor := 14;
           WriteBuf('FreeDOS rocks!', 35 + Round(Sin(DemoTime*0.6)*25),12 + Round(Cos(DemoTime*0.7)*10));
         end;
-      State_Demo2: Demo2;
+      State_Rainbow: RenderRainbow;
       State_Fire: RenderFire;
       State_Quit: halt;
     end;
