@@ -8,27 +8,10 @@
 program PlatusGame;
 
 uses
-  Crt, Dos;
+  Crt, Dos, Config, State, Renderer, Rainbow, Fire;
 
-const
-
-  ScreenWidth = 80;
-  ScreenHeight = 25;
-  ScreenSize = ScreenWidth * ScreenHeight;
-
-  State_Quit = 0;
-  State_Next = 1;
-
-  State_Intro = 10;
-  State_Menu = 11;
-  State_Game = 12;
-  State_GameOver = 13;
-
-  JUMP = 255;
 
 type
-  TScreenBuffer = array[1..ScreenSize] of Word;
-  TFireBuffer = array[1..ScreenSize] of Byte;
   TLevel = array[1..ScreenSize] of Byte;
   TPlayer = record
     X,Y: Integer;
@@ -39,85 +22,30 @@ type
     Jump: Byte;
     OnGround: Boolean;
   end;
-var
-  OffScreenBuffer: TScreenBuffer;
-  FireBuffer: TFireBuffer;
 
-  State: Byte;
+var
   DemoTime: Real;
-  RowNo: Integer;
   MenuPosition: Byte;
-  FColor,BColor: Byte;
-  AscFile: Text;
-  AscLine: string;
+
   Level: TLevel;
   Player: TPlayer;
 
-procedure ClearBuffer;
-var
-  i: Integer;
+
+procedure PlaySound(freq: Word);
 begin
-  for i := 1 to ScreenSize do
-    OffScreenBuffer[i] := (Black shl 12) or (White shl 8) or ord(' ');
+  Port[$61] := Port[$61] or 3;
+  Port[$43] := $B6;
+  Port[$42] := Lo(freq);
+  Port[$42] := Hi(freq);
+  Delay(10);
+  Port[$61] := Port[$61] and $FC;
 end;
-
-procedure CopyBufferToScreen;
-var
-  i: Integer;
-begin
-  for i := 1 to ScreenSize do
-    MemW[$B800:0 + (i-1) * 2] := OffScreenBuffer[i];
-end;
-
-procedure ChangeState(target: Byte);
-begin
-  if target = State_Next then
-  begin
-    Inc(State);
-  end
-  else
-  begin
-    State := target;
-  end;
-
-  ClearBuffer;
-end;
-
-procedure WriteBuf(Text: string; PosX, PosY: Integer);
-var
-  i, n: Integer;
-begin
-  n := PosY * ScreenWidth + PosX;
-  for i := 1 to Length(Text) do
-  begin
-    if n + i - 1 < High(OffScreenBuffer) then
-      if Text[i] <> ' ' then
-        OffScreenBuffer[n + i - 1] := (BColor shl 12) or (FColor shl 8) or Ord(Text[i]);
-  end;
-end;
-
-procedure WriteAscFile(const FileName: string; PosX,PosY: Byte);
-var
-  X, Y, AscWidth, AscHeight: Byte;
-begin
-  Assign(AscFile, FileName);
-  Reset(AscFile);
-
-  ReadLn(AscFile, AscWidth, AscHeight);
-
-  for y := PosY to PosY+AscHeight do
-  begin
-    ReadLn(AscFile, AscLine);
-    WriteBuf(AscLine, PosX, PosY+y);
-  end;
-
-  Close(AscFile);
-end;
-
 
 procedure LoadLevelFile(const FileName: string);
 var
   X, Y, AscWidth, AscHeight: Byte;
+  AscFile: Text;
+  AscLine: string;
 begin
   Assign(AscFile, FileName);
   Reset(AscFile);
@@ -135,10 +63,15 @@ end;
 
 procedure CursorPressed(X,Y:Integer);
 begin
-  Case State of
+  Case State.IsCurrent of
+    State_Settings:
+      begin
+        if (MenuPosition + Y >= 0) and (MenuPosition+Y<4) then
+          MenuPosition := (MenuPosition + Y)
+      end;
     State_Menu:
       begin
-        if (MenuPosition + Y >= 0) and (MenuPosition+Y<5) then
+        if (MenuPosition + Y >= 0) and (MenuPosition+Y<4) then
           MenuPosition := (MenuPosition + Y)
       end;
     State_Game:
@@ -146,33 +79,55 @@ begin
           if (Player.X + X > 1) and (Player.X+X < ScreenWidth) then
             Player.X := Player.X + X;
           if (Player.OnGround = False) and (Player.X + X > 1) and (Player.X+X < ScreenWidth) then
-            Player.X := Player.X + X;
-          if (Y<0) and (Player.OnGround) then Player.Jump := 255;
+            if Player.Jump = 16 then
+              Player.X := Player.X + X;
+          if (Y<0) and (Player.OnGround) then Player.Jump := 16;
           if Y>0 then Inc(Player.Y);
       end;
   end;
+  if Config.SoundEffects then
+    PlaySound(500);
 end;
+
 
 procedure EnterPressed;
 begin
-  Case State of
+  Case State.IsCurrent of
     State_Menu:
       begin
         Case MenuPosition of
-          0: ChangeState(State_Game);
-          1: ChangeState(State_Game);
-          2: ChangeState(State_Quit);
+          0: State.Change(State_Game);
+          2: State.Change(State_Settings);
+          3: State.Change(State_Quit);
+        end;
+        MenuPosition := 0;
+      end;
+    State_Settings:
+      begin
+        Case MenuPosition of
+          0: Config.BackgroundEffects := not Config.BackgroundEffects;
+          1: Config.SoundEffects := not Config.SoundEffects;
+          2: Config.Particles := not Config.Particles;
+          3:
+            begin
+              State.Change(State_Menu);
+              MenuPosition := 0;
+            end;
         end;
       end;
-    State_Intro: ChangeState(State_Next);
+    State_Intro: State.Change(State_Next);
   end;
+  if Config.SoundEffects then
+    PlaySound(1000);
 end;
 
 procedure EscPressed;
 begin
-  if State = State_Menu then
+  if Config.SoundEffects then
+    PlaySound(1200);
+  if State.Test(State_Menu) then
     halt;
-  ChangeState(State_Menu);
+  State.Change(State_Menu);
 end;
 
 procedure CheckForKeyPress;
@@ -189,82 +144,6 @@ begin
       #80: CursorPressed(0,1);
       #75: CursorPressed(-1,0);
       #77: CursorPressed(1,0);
-    end;
-  end;
-end;
-
-procedure RenderRainbow;
-var
-  X,Y,Value: Integer;
-  zoom,speed: Real;
-  VX,VY: Real;
-  c:Byte;
-begin
-  zoom := 0.006;
-
-  Y:= Round(RowNo) mod ScreenHeight;
-  for X := 1 to ScreenWidth  do
-  begin
-    VX := ((X+64)*(4+cos(DemoTime*0.06)*3))*zoom ;
-    VY := ((Y)*(4+sin(DemoTime*0.07)*3))*zoom;
-    Value := Round(VX+VY);
-    c:=8;
-    if Value mod 2 = 0 then c:=7;
-    if Value mod 3 = 0 then c:=4;
-
-    OffscreenBuffer[Y * ScreenWidth + X] := (Black shl 12) or (c shl 8) or Ord(219);
-  end;
-end;
-
-procedure ClearFireBuffer;
-var
-  i: Integer;
-begin
-  for i := 1 to ScreenSize do
-    FireBuffer[i] := 0;
-end;
-
-procedure RenderFire;
-var
-  x, y: Integer;
-  randI, new: Integer;
-  fireChars: array[0..7] of Char;
-  fireColors: array[0..7] of Byte;
-begin
-  fireChars[0] := ' ';
-  fireChars[1] := '.';
-  fireChars[2] := ',';
-  fireChars[3] := '%';
-  fireChars[4] := 'O';
-  fireChars[5] := '@';
-  fireChars[6] := '8';
-  fireChars[7] := '#';
-  fireColors[0] := 8;
-  fireColors[1] := 8;
-  fireColors[2] := 4;
-  fireColors[3] := 4;
-  fireColors[4] := 4;
-  fireColors[5] := 12;
-  fireColors[6] := 14;
-  fireColors[7] := 15;
-
-  if Round(DemoTime*100) mod 100 = 0 then
-  begin
-
-  if Round(DemoTime) mod 8 = 0 then
-  begin
-    FireBuffer[1930+Random(60)]:=4+Random(4);
-    FireBuffer[1920+Random(80)]:=0;
-  end;
-
-  for y := 0 to ScreenHeight - 2 do
-    for x := 0 to ScreenWidth - 1 do
-    begin
-      randI := (y + 1) * ScreenWidth + x + Random(3) - 1;
-      new := FireBuffer[randI] - (Random(2) and 1);
-      if new < 0 then new := 0;
-      FireBuffer[y * ScreenWidth + x] := new;
-      OffscreenBuffer[y * ScreenWidth + x] := (Black shl 12) or (fireColors[new] shl 8) or Ord(fireChars[new]);
     end;
   end;
 end;
@@ -288,19 +167,36 @@ begin
 end;
 
 procedure WriteStatus;
+var
+   VPos: Byte;
 begin
-  FColor:=0;
-  BColor:=15;
-  WriteBuf('___PLAYER:1___HP:10___SCORE:000___TIME:000___',17,0);
-  BColor:=0;
-  FColor:=15;
+  VPos:=ScreenHeight-1;
+  ClearLine(VPos);
+
+  FColor:=7;
+  WriteBuf('PLAYER',1,VPos);
+  WriteBuf('HP',11,VPos);
+  WriteBuf('SCORE',18,VPos);
+  WriteBuf('TIME LEFT',35,VPos);
+  FColor := 15;
+  WriteBuf('1',8,VPos);
+  WriteBuf('10',14,VPos);
+  WriteBuf('999',24,VPos);
+  WriteBuf('99',45,VPos);
+
 end;
 
 procedure GameMock;
 var
   block:Byte;
 begin
-  RenderFire;
+  if Config.BackgroundEffects then
+  begin
+    Fire.Render(DemoTime);
+  end
+  else
+    Renderer.ClearBuffer;
+
   RenderLevel;
   WriteStatus;
 
@@ -308,16 +204,16 @@ begin
   WriteBuf(Player.Sprites[1+3*Player.Frame], Player.X-1, Player.Y-2);
   WriteBuf(Player.Sprites[2+3*Player.Frame], Player.X-1, Player.Y-1);
   WriteBuf(Player.Sprites[3+3*Player.Frame], Player.X-1, Player.Y);
-  if Round(DemoTime*10) mod 50 = 0 then Inc(Player.Frame);
+  if Round(DemoTime*10) mod 5 = 0 then Inc(Player.Frame);
   if Player.Frame > 2 then Player.Frame := 0;
 
   block := Level[(Player.Y+1)*ScreenWidth + Player.X];
 
   if (block <>  Ord('ß')) and (block <> Ord('Ä')) and (block <> Ord('Ã')) and (block <> Ord('´')) then
   begin
-    if (Player.Jump = 0) and (Round(DemoTime*10) mod 50 = 0) then
+    if (Player.Jump = 0) then
       Player.Y := Player.Y + 1;
-      Player.OnGround := False;
+    Player.OnGround := False;
   end
   else
   begin
@@ -326,8 +222,9 @@ begin
 
   if (Player.Jump > 0) then
   begin
-    if Player.Jump > 255-3 then
+    if Player.Jump > 16-3 then
       Dec(Player.Y);
+    Dec(Player.Jump);
     Dec(Player.Jump);
   end;
 
@@ -354,9 +251,6 @@ end;
 
 procedure GameReset;
 begin
-  ClearBuffer;
-  ClearFireBuffer;
-  State := State_Intro;
   DemoTime := 0.0;
   RowNo:=0;
   MenuPosition := 0;
@@ -389,7 +283,7 @@ begin
 
   Repeat
 
-    Case State of
+    Case State.IsCurrent of
       State_Intro:
         begin
           OffScreenBuffer[Round(1000+Sin(DemoTime)*1000)] := (Black shl 12) or (7 shl 8) or ord(176+Random(3));
@@ -397,36 +291,70 @@ begin
           WriteBuf('P1X',40,12);
           FColor := 8;
           WriteBuf('Press [ENTER]', 35,23);
-          if DemoTime>100 then ChangeState(State_next);
+          if DemoTime>10 then State.Change(State_next);
         end;
       State_Menu:
         begin
-          RenderRainbow;
+          if Config.BackgroundEffects then
+          begin
+            Rainbow.Render(DemoTime);
+          end
+          else
+            Renderer.ClearBuffer;
+
           FColor := 15;
-          WriteBuf('   ¿ P L A T U S  Ú    ',10,5);
-          WriteBuf('  ¿³Ú the game ¿ ¿³Ú   ',10,6);
-          WriteBuf('ßßßßßßßßßßßßßßßßßßßßßßß',10,7);
+          WriteBuf('   ¿ P L A T U S  Ú V0.3',10,5);
+          WriteBuf('  ¿³Ú the game ¿ ¿³Ú    ',10,6);
+          WriteBuf('ßßßßßßßßßßßßßßßßßßßßßßßß',10,7);
+
+          ClearLine(9+MenuPosition);
 
           WriteMenu(0,'Start new game',10,9);
           WriteMenu(1,'Load level',10,10);
-          WriteMenu(2,'Quit',10,11);
+          WriteMenu(2,'Settings',10,11);
+          WriteMenu(3,'Quit',10,12);
           WriteMenuPos(10,9);
 
-
-          FColor := 8;
+          FColor := 7;
+          ClearLine(22);
+          WriteBuf('Use [ARROWS] and [ENTER] for selecton or [ESC] to Back/Quit.',10,22);
+          ClearLine(23);
           WriteBuf('(c)2024 Krzysztof Krystian Jankowski',10,23);
-          WriteBuf('Use [ARROWS] and [ENTER] for selecton or [ESC] to Quit.',10,22);
+        end;
+      State_Settings:
+        begin
+          if Config.BackgroundEffects then
+          begin
+            Rainbow.Render(DemoTime);
+          end
+          else
+            Renderer.ClearBuffer;
+
+          ClearLine(9+MenuPosition);
+
+          WriteMenu(0,'Background Effects',10,9);
+          WriteMenu(1,'Sound Effects',10,10);
+          WriteMenu(2,'Particles',10,11);
+          WriteMenu(3,'Back to main menu',10,12);
+          WriteMenuPos(10,9);
+          FColor:=7;
+          WriteBuf('No',35,9);
+          WriteBuf('No',35,10);
+          WriteBuf('No',35,11);
+          FColor:=15;
+          if Config.BackgroundEffects then WriteBuf('Yes',35,9);
+          if Config.SoundEffects then WriteBuf('Yes',35,10);
+          if Config.Particles then WriteBuf('Yes',35,11);
+
         end;
       State_Game: GameMock;
       State_Quit: halt;
     end;
 
+    WaitForVerticalRetrace;
     CopyBufferToScreen;
     CheckForKeyPress;
-    DemoTime := DemoTime + 0.025;
-    Inc(RowNo);
-    if RowNo>ScreenHeight then RowNo := 0;
-    delay(100);
+    DemoTime := DemoTime + 0.5;
   Until False;
 
 end.
