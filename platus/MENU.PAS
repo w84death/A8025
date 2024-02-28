@@ -1,13 +1,17 @@
 unit Menu;
 
 interface
-procedure MainRender;
-procedure SettingsRender;
+procedure MainRender(DemoTime: Real);
+procedure SettingsRender(DemoTime: Real);
+procedure MainCursorPressed(X,Y:Integer);
+procedure SettingsCursorPressed(X,Y:Integer);
+procedure MainEnterPressed;
+procedure SettingsEnterPressed;
 
 implementation
 
 uses
-  Config, Renderer, Rainbow;
+  Config, State, Renderer, Rainbow;
 
 var
   MenuPosition: Byte;
@@ -25,7 +29,7 @@ begin
   Writebuf(Chr(196)+Chr(175),X,Y+MenuPosition);
 end;
 
-procedure MainRender;
+procedure MainRender(DemoTime: Real);
 begin
     if Config.BackgroundEffects then
     begin
@@ -37,7 +41,7 @@ begin
     FColor := 15;
     WriteBuf('  Ú  P L A T U S',10,5);
     WriteBuf(' ¿³³Ú  the game ',10,6);
-    WriteBuf('ßßßßßßßßßßßßßßßßßßßV0.3ßßß',10,7);
+    WriteBuf('ßßßßßßßßßßßßßßßßßßßV0.4ßßß',10,7);
 
     ClearLine(9+MenuPosition);
 
@@ -54,11 +58,11 @@ begin
     WriteBuf('(c)2024 Krzysztof Krystian Jankowski',10,23);
 end;
 
-procedure SettingsRender;
+procedure SettingsRender(DemoTime: Real);
 begin
     if Config.BackgroundEffects then
     begin
-      ainbow.Render(DemoTime);
+      Rainbow.Render(DemoTime);
     end
     else
       Renderer.ClearBuffer;
@@ -83,14 +87,13 @@ end;
 
 procedure MainEnterPressed;
 begin
-    Case MenuPosition of
-      0: State.Change(State_Game);
-      2: State.Change(State_Settings);
-      3: State.Change(State_Quit);
-    end;
-    MenuPosition := 0;
+  Case MenuPosition of
+    0: State.Change(State_Game);
+    2: State.Change(State_Settings);
+    3: State.Change(State_Quit);
   end;
-begin
+  MenuPosition := 0;
+end;
 
 procedure SettingsEnterPressed;
 begin
@@ -106,13 +109,13 @@ begin
   end;
 end;
 
-procedure MainCursorPressed;
+procedure MainCursorPressed(X,Y:Integer);
 begin
   if (MenuPosition + Y >= 0) and (MenuPosition+Y<4) then
     MenuPosition := (MenuPosition + Y)
 end;
 
-procedure SettingsCursorPressed;
+procedure SettingsCursorPressed(X,Y:Integer);
 begin
   if (MenuPosition + Y >= 0) and (MenuPosition+Y<4) then
     MenuPosition := (MenuPosition + Y)

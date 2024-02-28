@@ -44,14 +44,9 @@ begin
   fireColors[6] := 14;
   fireColors[7] := 15;
 
-  if Round(DemoTime*100) mod 100 = 0 then
-  begin
 
-  if Round(DemoTime) mod 8 = 0 then
-  begin
-    FireBuffer[1920+Random(80)]:=0;
-    FireBuffer[1920+Random(80)]:=4+Random(4);
-  end;
+  FireBuffer[1920+Random(80)]:=0;
+  FireBuffer[1920+Random(80)]:=4+Random(4);
 
   for y := 0 to ScreenHeight - 2 do
     for x := 0 to ScreenWidth - 1 do
@@ -62,7 +57,7 @@ begin
       FireBuffer[y * ScreenWidth + x] := new;
       OffscreenBuffer[y * ScreenWidth + x] := (0 shl 12) or (fireColors[new] shl 8) or Ord(fireChars[new]);
     end;
-  end;
+
 end;
 
 begin

@@ -36,8 +36,8 @@ end;
 procedure CursorPressed(X,Y:Integer);
 begin
   Case State.IsCurrent of
-    State_Settings: Menu.MainCursorPressed;
-    State_Menu: Menu.SettingsCursorPressed;
+    State_Settings: Menu.MainCursorPressed(X,Y);
+    State_Menu: Menu.SettingsCursorPressed(X,Y);
     State_Game:
       begin
           if (Player.One.X + X > 1) and (Player.One.X+X < ScreenWidth) then
@@ -52,7 +52,6 @@ begin
   if Config.SoundEffects then
     PlaySound(500);
 end;
-
 
 procedure EnterPressed;
 begin
@@ -113,9 +112,22 @@ begin
 
 end;
 
-procedure GameMock;
+function StandsOnGround: Boolean;
 var
   block:Byte;
+begin
+ block := Level.GetCell(Player.One.X, Player.One.Y + 1);
+ if (block <>  Ord('ß')) and (block <> Ord('Ã')) and (block <> Ord('Ä')) and (block <> Ord('´')) then
+ begin
+   StandsOnGround := True;
+ end
+ else
+ begin
+   StandsOnGround := False;
+ end;
+end;
+
+procedure GameMock;
 begin
   if Config.BackgroundEffects then
   begin
@@ -134,9 +146,7 @@ begin
   if Round(DemoTime*10) mod 5 = 0 then Inc(Player.One.Frame);
   if Player.One.Frame > 2 then Player.One.Frame := 0;
 
-  block := Level.GetCell(Player.One.X, Player.One.Y + 1);
-
-  if (block <>  Ord('ï¿½')) and (block <> Ord('ï¿½')) and (block <> Ord('ï¿½')) and (block <> Ord('ï¿½')) then
+  if StandsOnGround then
   begin
     if (Player.One.Jump = 0) then
       Player.One.Y := Player.One.Y + 1;
@@ -157,7 +167,7 @@ begin
 
   if Player.One.Y > ScreenHeight then
   begin
-    Player.One.X := 40;
+    Player.One.X := 10;
     Player.One.Y := 1;
   end;
 
@@ -166,8 +176,6 @@ end;
 procedure GameReset;
 begin
   DemoTime := 0.0;
-  RowNo:=0;
-  MenuPosition := 0;
   FColor := 15;
   BColor := 0;
 end;
@@ -188,8 +196,8 @@ begin
           WriteBuf('Press [ENTER]', 35,23);
           if DemoTime>10 then State.Change(State_next);
         end;
-      State_Menu: Menu.MainRender;        
-      State_Settings: Menu.SettingsRender;
+      State_Menu: Menu.MainRender(DemoTime);
+      State_Settings: Menu.SettingsRender(DemoTime);
       State_Game: GameMock;
       State_Quit: halt;
     end;

@@ -2,8 +2,6 @@ unit Player;
 
 interface
 
-
-implementation
 type
   TPlayer = record
     X,Y: Integer;
@@ -17,9 +15,11 @@ type
 
 var
   One, Two: TPlayer;
-  
+
+implementation
+
 begin
-  One.X := 40;
+  One.X := 10;
   One.Y := 1;
   One.HP := 100;
   One.Frame := 0;

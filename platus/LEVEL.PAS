@@ -4,12 +4,14 @@ interface
 
 procedure Load(const LevelID: Byte);
 procedure Render;
-procedure SetCell(X,Y: Byte, Data: Byte);
+procedure SetCell(X,Y: Byte; Data: Byte);
 function GetCell(X,Y: Byte): Byte;
 
-implementataion
+implementation
+
 uses
-  Config, Renderer
+  Config, Renderer;
+
 type
   TLevel = array[1..ScreenSize] of Byte;
 
@@ -23,8 +25,10 @@ var
   X, Y, AscWidth, AscHeight: Byte;
   AscFile: Text;
   AscLine: string;
+  FileName: string[2];
 begin
-  Assign(AscFile, 'Level'+IntToStr(LevelID)+'.asc');
+  Str(LevelID, FileName);
+  Assign(AscFile, 'Level' + FileName + '.asc');
   Reset(AscFile);
 
   for y := 0 to ScreenHeight do
@@ -41,22 +45,31 @@ end;
 procedure Render;
 var
   i,n:Integer;
-  c:Byte;
+  f,b:Byte;
 begin
  for i := 1 to ScreenSize do
   begin
-    if Level[i] <> Ord(' ') then
+    if LevelData[i] <> Ord(' ') then
     begin
-      c:=8;
-      Case Level[i] of
-        Ord('ï¿½'): c:=15;
+      f:=8;
+      b:=0;
+      Case LevelData[i] of
+        Ord('ß'): f:=15;
+        Ord('Ã'): f:=5;
+        Ord('Ä'): f:=5;
+        Ord('´'): f:=5;
+        Ord('$'):
+          begin
+            f:=0;
+            b:=11;
+          end;
       end;
-      OffScreenBuffer[i] := (Black shl 12) or (c shl 8) or Ord(Level[i]);
+      OffScreenBuffer[i] := (b shl 12) or (f shl 8) or Ord(LevelData[i]);
     end;
   end;
 end;
 
-procedure SetCell(X,Y: Byte, Data: Byte);
+procedure SetCell(X,Y: Byte; Data: Byte);
 begin
   LevelData[Y*ScreenWidth+X] := Data; 
 end;
