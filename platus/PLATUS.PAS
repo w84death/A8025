@@ -8,28 +8,10 @@
 program PlatusGame;
 
 uses
-  Crt, Dos, Config, State, Renderer, Rainbow, Fire;
-
-
-type
-  TLevel = array[1..ScreenSize] of Byte;
-  TPlayer = record
-    X,Y: Integer;
-    Sprites: array[1..9] of String;
-    Width, Height: Byte;
-    Frame: Byte;
-    HP: Byte;
-    Jump: Byte;
-    OnGround: Boolean;
-  end;
+  Crt, Dos, Config, State, Menu, Renderer, Player, Level, Rainbow, Fire;
 
 var
   DemoTime: Real;
-  MenuPosition: Byte;
-
-  Level: TLevel;
-  Player: TPlayer;
-
 
 procedure PlaySound(freq: Word);
 begin
@@ -41,48 +23,30 @@ begin
   Port[$61] := Port[$61] and $FC;
 end;
 
-procedure LoadLevelFile(const FileName: string);
-var
-  X, Y, AscWidth, AscHeight: Byte;
-  AscFile: Text;
-  AscLine: string;
+procedure BuildLadder;
 begin
-  Assign(AscFile, FileName);
-  Reset(AscFile);
-
-  for y := 0 to ScreenHeight do
+  if Player.One.OnGround then
   begin
-    ReadLn(AscFile, AscLine);
-    for x := 1 to High(AscLine) do
-    begin
-      Level[y*ScreenWidth+x] := Ord(AscLine[x]);
-    end;
+    Level.SetCell(Player.One.X-1, Player.One.Y, Ord('Ã'));
+    Level.SetCell(Player.One.X, Player.One.Y, Ord('Ä'));
+    Level.SetCell(Player.One.X+1, Player.One.Y, Ord('´'));
   end;
-  Close(AscFile);
 end;
 
 procedure CursorPressed(X,Y:Integer);
 begin
   Case State.IsCurrent of
-    State_Settings:
-      begin
-        if (MenuPosition + Y >= 0) and (MenuPosition+Y<4) then
-          MenuPosition := (MenuPosition + Y)
-      end;
-    State_Menu:
-      begin
-        if (MenuPosition + Y >= 0) and (MenuPosition+Y<4) then
-          MenuPosition := (MenuPosition + Y)
-      end;
+    State_Settings: Menu.MainCursorPressed;
+    State_Menu: Menu.SettingsCursorPressed;
     State_Game:
       begin
-          if (Player.X + X > 1) and (Player.X+X < ScreenWidth) then
-            Player.X := Player.X + X;
-          if (Player.OnGround = False) and (Player.X + X > 1) and (Player.X+X < ScreenWidth) then
-            if Player.Jump = 16 then
-              Player.X := Player.X + X;
-          if (Y<0) and (Player.OnGround) then Player.Jump := 16;
-          if Y>0 then Inc(Player.Y);
+          if (Player.One.X + X > 1) and (Player.One.X+X < ScreenWidth) then
+            Player.One.X := Player.One.X + X;
+          if (Player.One.OnGround = False) and (Player.One.X + X > 1) and (Player.One.X+X < ScreenWidth) then
+            if Player.One.Jump = 16 then
+              Player.One.X := Player.One.X + X;
+          if (Y<0) and (Player.One.OnGround) then Player.One.Jump := 16;
+          if Y>0 then Inc(Player.One.Y);
       end;
   end;
   if Config.SoundEffects then
@@ -93,29 +57,10 @@ end;
 procedure EnterPressed;
 begin
   Case State.IsCurrent of
-    State_Menu:
-      begin
-        Case MenuPosition of
-          0: State.Change(State_Game);
-          2: State.Change(State_Settings);
-          3: State.Change(State_Quit);
-        end;
-        MenuPosition := 0;
-      end;
-    State_Settings:
-      begin
-        Case MenuPosition of
-          0: Config.BackgroundEffects := not Config.BackgroundEffects;
-          1: Config.SoundEffects := not Config.SoundEffects;
-          2: Config.Particles := not Config.Particles;
-          3:
-            begin
-              State.Change(State_Menu);
-              MenuPosition := 0;
-            end;
-        end;
-      end;
+    State_Menu: Menu.MainEnterPressed;
+    State_Settings: Menu.SettingsEnterPressed;
     State_Intro: State.Change(State_Next);
+    State_Game: BuildLadder;
   end;
   if Config.SoundEffects then
     PlaySound(1000);
@@ -144,24 +89,6 @@ begin
       #80: CursorPressed(0,1);
       #75: CursorPressed(-1,0);
       #77: CursorPressed(1,0);
-    end;
-  end;
-end;
-
-procedure RenderLevel;
-var
-  i,n:Integer;
-  c:Byte;
-begin
- for i := 1 to ScreenSize do
-  begin
-    if Level[i] <> Ord(' ') then
-    begin
-      c:=8;
-      Case Level[i] of
-        Ord('ß'): c:=15;
-      end;
-      OffScreenBuffer[i] := (Black shl 12) or (c shl 8) or Ord(Level[i]);
     end;
   end;
 end;
@@ -197,56 +124,43 @@ begin
   else
     Renderer.ClearBuffer;
 
-  RenderLevel;
+  Level.Render;
   WriteStatus;
 
   FColor := 14;
-  WriteBuf(Player.Sprites[1+3*Player.Frame], Player.X-1, Player.Y-2);
-  WriteBuf(Player.Sprites[2+3*Player.Frame], Player.X-1, Player.Y-1);
-  WriteBuf(Player.Sprites[3+3*Player.Frame], Player.X-1, Player.Y);
-  if Round(DemoTime*10) mod 5 = 0 then Inc(Player.Frame);
-  if Player.Frame > 2 then Player.Frame := 0;
+  WriteBuf(Player.One.Sprites[1+3*Player.One.Frame], Player.One.X-1, Player.One.Y-2);
+  WriteBuf(Player.One.Sprites[2+3*Player.One.Frame], Player.One.X-1, Player.One.Y-1);
+  WriteBuf(Player.One.Sprites[3+3*Player.One.Frame], Player.One.X-1, Player.One.Y);
+  if Round(DemoTime*10) mod 5 = 0 then Inc(Player.One.Frame);
+  if Player.One.Frame > 2 then Player.One.Frame := 0;
 
-  block := Level[(Player.Y+1)*ScreenWidth + Player.X];
+  block := Level.GetCell(Player.One.X, Player.One.Y + 1);
 
-  if (block <>  Ord('ß')) and (block <> Ord('Ä')) and (block <> Ord('Ã')) and (block <> Ord('´')) then
+  if (block <>  Ord('ï¿½')) and (block <> Ord('ï¿½')) and (block <> Ord('ï¿½')) and (block <> Ord('ï¿½')) then
   begin
-    if (Player.Jump = 0) then
-      Player.Y := Player.Y + 1;
-    Player.OnGround := False;
+    if (Player.One.Jump = 0) then
+      Player.One.Y := Player.One.Y + 1;
+    Player.One.OnGround := False;
   end
   else
   begin
-    Player.OnGround := True;
+    Player.One.OnGround := True;
   end;
 
-  if (Player.Jump > 0) then
+  if (Player.One.Jump > 0) then
   begin
-    if Player.Jump > 16-3 then
-      Dec(Player.Y);
-    Dec(Player.Jump);
-    Dec(Player.Jump);
+    if Player.One.Jump > 16-3 then
+      Dec(Player.One.Y);
+    Dec(Player.One.Jump);
+    Dec(Player.One.Jump);
   end;
 
-  if Player.Y > ScreenHeight then
+  if Player.One.Y > ScreenHeight then
   begin
-    Player.X := 40;
-    Player.Y := 1;
+    Player.One.X := 40;
+    Player.One.Y := 1;
   end;
 
-end;
-
-procedure WriteMenu(pos:Byte;title:String;X,Y:Byte);
-begin
-  FColor := 7;
-  if MenuPosition = pos then FColor := 15;
-  WriteBuf('   '+title, X, Y);
-end;
-
-procedure WriteMenuPos(X,Y:Byte);
-begin
-  FColor := 15;
-  Writebuf(Chr(196)+Chr(175),X,Y+MenuPosition);
 end;
 
 procedure GameReset;
@@ -256,30 +170,11 @@ begin
   MenuPosition := 0;
   FColor := 15;
   BColor := 0;
-
-  Player.X := 40;
-  Player.Y := 0;
-  Player.HP := 100;
-  Player.Frame := 0;
-  Player.Jump := 0;
-  Player.OnGround := False;
-  Player.Width := 3;
-  Player.Height := 3;
-  Player.Sprites[1] := ' @ ';
-  Player.Sprites[2] := '.#.';
-  Player.Sprites[3] := '/~\';
-  Player.Sprites[4] := ' @ ';
-  Player.Sprites[5] := '''#,';
-  Player.Sprites[6] := '[~\';
-  Player.Sprites[7] := ' @ ';
-  Player.Sprites[8] := '.#''';
-  Player.Sprites[9] := '/~[';
 end;
 
 begin
   ClrScr;
   GameReset;
-  LoadLevelFile('game.asc');
 
   Repeat
 
@@ -293,60 +188,8 @@ begin
           WriteBuf('Press [ENTER]', 35,23);
           if DemoTime>10 then State.Change(State_next);
         end;
-      State_Menu:
-        begin
-          if Config.BackgroundEffects then
-          begin
-            Rainbow.Render(DemoTime);
-          end
-          else
-            Renderer.ClearBuffer;
-
-          FColor := 15;
-          WriteBuf('   ¿ P L A T U S  Ú V0.3',10,5);
-          WriteBuf('  ¿³Ú the game ¿ ¿³Ú    ',10,6);
-          WriteBuf('ßßßßßßßßßßßßßßßßßßßßßßßß',10,7);
-
-          ClearLine(9+MenuPosition);
-
-          WriteMenu(0,'Start new game',10,9);
-          WriteMenu(1,'Load level',10,10);
-          WriteMenu(2,'Settings',10,11);
-          WriteMenu(3,'Quit',10,12);
-          WriteMenuPos(10,9);
-
-          FColor := 7;
-          ClearLine(22);
-          WriteBuf('Use [ARROWS] and [ENTER] for selecton or [ESC] to Back/Quit.',10,22);
-          ClearLine(23);
-          WriteBuf('(c)2024 Krzysztof Krystian Jankowski',10,23);
-        end;
-      State_Settings:
-        begin
-          if Config.BackgroundEffects then
-          begin
-            Rainbow.Render(DemoTime);
-          end
-          else
-            Renderer.ClearBuffer;
-
-          ClearLine(9+MenuPosition);
-
-          WriteMenu(0,'Background Effects',10,9);
-          WriteMenu(1,'Sound Effects',10,10);
-          WriteMenu(2,'Particles',10,11);
-          WriteMenu(3,'Back to main menu',10,12);
-          WriteMenuPos(10,9);
-          FColor:=7;
-          WriteBuf('No',35,9);
-          WriteBuf('No',35,10);
-          WriteBuf('No',35,11);
-          FColor:=15;
-          if Config.BackgroundEffects then WriteBuf('Yes',35,9);
-          if Config.SoundEffects then WriteBuf('Yes',35,10);
-          if Config.Particles then WriteBuf('Yes',35,11);
-
-        end;
+      State_Menu: Menu.MainRender;        
+      State_Settings: Menu.SettingsRender;
       State_Game: GameMock;
       State_Quit: halt;
     end;
