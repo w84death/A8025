@@ -16,7 +16,43 @@ type
 var
   One, Two: TPlayer;
 
+function StandsOnGround: Boolean;
+function CanBuildLadder: Boolean;
+
 implementation
+uses
+  Level;
+
+function CanBuildLadder: Boolean;
+var
+ block:Byte;
+begin
+ block := Level.GetCell(One.X, One.Y);
+ if (block <>  Ord('ß')) and (block <> Ord('Ã')) and (block <> Ord('´')) then
+ begin
+   CanBuildLadder := True;
+ end
+ else
+ begin
+   CanBuildLadder := False;
+ end;
+end;
+
+function StandsOnGround: Boolean;
+var
+  block:Byte;
+begin
+ block := Level.GetCell(One.X, One.Y + 1);
+ if (block <>  Ord('ß')) and (block <> Ord('Ã')) and (block <> Ord('Ä')) and (block <> Ord('´')) then
+ begin
+   StandsOnGround := True;
+ end
+ else
+ begin
+   StandsOnGround := False;
+ end;
+end;
+
 
 begin
   One.X := 10;

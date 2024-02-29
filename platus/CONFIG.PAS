@@ -5,12 +5,12 @@ const
   ScreenHeight = 25;
   ScreenSize = ScreenWidth * ScreenHeight;
 var
-  BackgroundEffects,SoundEffects,Particles: Boolean;
+  BackgroundEffects,SoundEffects,Colors: Boolean;
 
 implementation
 
 begin
   BackgroundEffects := True;
   SoundEffects := True;
-  Particles := True;
+  Colors := True;
 end.

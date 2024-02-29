@@ -58,14 +58,22 @@ end;
 procedure WriteBuf(Text: string; PosX, PosY: Integer);
 var
   i, n, p: Integer;
+  FC,BC: Byte;
 begin
+  FC := 15;
+  BC := 0;
   n := PosY * ScreenWidth + PosX;
   for i := 1 to Length(Text) do
   begin
     p := n + i - 1;
     if (p < High(OffScreenBuffer)) and (p>0) then
+      if Config.Colors then
+      begin
+        FC := FColor;
+        BC := BColor;
+      end;
       if Text[i] <> ' ' then
-        OffScreenBuffer[p] := (BColor shl 12) or (FColor shl 8) or Ord(Text[i]);
+        OffScreenBuffer[p] := (BC shl 12) or (FC shl 8) or Ord(Text[i]);
   end;
 end;
 

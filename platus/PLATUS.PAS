@@ -25,7 +25,7 @@ end;
 
 procedure BuildLadder;
 begin
-  if Player.One.OnGround then
+  if Player.One.OnGround and CanBuildLadder then
   begin
     Level.SetCell(Player.One.X-1, Player.One.Y, Ord('Ã'));
     Level.SetCell(Player.One.X, Player.One.Y, Ord('Ä'));
@@ -112,21 +112,6 @@ begin
 
 end;
 
-function StandsOnGround: Boolean;
-var
-  block:Byte;
-begin
- block := Level.GetCell(Player.One.X, Player.One.Y + 1);
- if (block <>  Ord('ß')) and (block <> Ord('Ã')) and (block <> Ord('Ä')) and (block <> Ord('´')) then
- begin
-   StandsOnGround := True;
- end
- else
- begin
-   StandsOnGround := False;
- end;
-end;
-
 procedure GameMock;
 begin
   if Config.BackgroundEffects then
@@ -138,12 +123,12 @@ begin
 
   Level.Render;
   WriteStatus;
-
-  FColor := 14;
+  if Config.Colors then
+    FColor := 14;
   WriteBuf(Player.One.Sprites[1+3*Player.One.Frame], Player.One.X-1, Player.One.Y-2);
   WriteBuf(Player.One.Sprites[2+3*Player.One.Frame], Player.One.X-1, Player.One.Y-1);
   WriteBuf(Player.One.Sprites[3+3*Player.One.Frame], Player.One.X-1, Player.One.Y);
-  if Round(DemoTime*10) mod 5 = 0 then Inc(Player.One.Frame);
+  if Round(DemoTime*10) mod 10 = 0 then Inc(Player.One.Frame);
   if Player.One.Frame > 2 then Player.One.Frame := 0;
 
   if StandsOnGround then

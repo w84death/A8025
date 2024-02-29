@@ -15,10 +15,19 @@ var
   c:Byte;
 begin
   speed := 0.4;
-
+  c := 15;
   for Y := 0 to ScreenHeight-1 do
   begin
-    c := 1 + (Y+Round(DemoTime*speed)) mod 5;
+    if Config.Colors then
+    begin
+      c := 1 + (Y+Round(DemoTime*speed)) mod 5;
+    end
+    else
+    begin
+     if (Round(DemoTime*speed)) mod 5 = 0 then
+       c := 0;
+    end;
+
     for X := 1 to ScreenWidth  do
     begin
       OffscreenBuffer[Y * ScreenWidth + X] := (0 shl 12) or (c shl 8) or Ord(254);

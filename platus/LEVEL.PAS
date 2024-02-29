@@ -47,10 +47,14 @@ var
   i,n:Integer;
   f,b:Byte;
 begin
+  f:=15;
+  b:=0;
  for i := 1 to ScreenSize do
   begin
     if LevelData[i] <> Ord(' ') then
     begin
+      if Config.Colors then
+      begin
       f:=8;
       b:=0;
       Case LevelData[i] of
@@ -61,8 +65,9 @@ begin
         Ord('$'):
           begin
             f:=0;
-            b:=11;
+            b:=2;
           end;
+      end;
       end;
       OffScreenBuffer[i] := (b shl 12) or (f shl 8) or Ord(LevelData[i]);
     end;

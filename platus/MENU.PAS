@@ -71,7 +71,7 @@ begin
 
     WriteMenu(0,'Background Effects',10,9);
     WriteMenu(1,'Sound Effects',10,10);
-    WriteMenu(2,'Particles',10,11);
+    WriteMenu(2,'Colors',10,11);
     WriteMenu(3,'Back to main menu',10,12);
     WriteMenuPos(10,9);
     FColor:=7;
@@ -81,7 +81,7 @@ begin
     FColor:=15;
     if Config.BackgroundEffects then WriteBuf('Yes',35,9);
     if Config.SoundEffects then WriteBuf('Yes',35,10);
-    if Config.Particles then WriteBuf('Yes',35,11);
+    if Config.Colors then WriteBuf('Yes',35,11);
 
 end;
 
@@ -100,7 +100,7 @@ begin
   Case MenuPosition of
     0: Config.BackgroundEffects := not Config.BackgroundEffects;
     1: Config.SoundEffects := not Config.SoundEffects;
-    2: Config.Particles := not Config.Particles;
+    2: Config.Colors := not Config.Colors;
     3:
       begin
         State.Change(State_Menu);
