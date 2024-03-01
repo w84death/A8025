@@ -5,12 +5,15 @@ interface
 type
   TPlayer = record
     X,Y: Integer;
-    Sprites: array[1..9] of String;
+    Frames: array[1..9] of String;
     Width, Height: Byte;
     Frame: Byte;
     HP: Byte;
     Jump: Byte;
     OnGround: Boolean;
+    Score: Byte;
+    Resource: Byte;
+    Direction: Byte;
   end;
 
 var
@@ -18,10 +21,11 @@ var
 
 function StandsOnGround: Boolean;
 function CanBuildLadder: Boolean;
+procedure Render(DemoTime: Real);
 
 implementation
 uses
-  Level;
+  Config, Renderer, Level;
 
 function CanBuildLadder: Boolean;
 var
@@ -53,23 +57,40 @@ begin
  end;
 end;
 
+procedure Render(DemoTime: Real);
+var
+  X,Y:Byte;
+begin
+  if Config.Colors then
+    FColor := 14;
+  for Y:=0 to One.Height-1 do
+    for X:=0 to One.Width-1 do
+      WriteBuf(One.Frames[One.Frame][1+X+One.Width*Y], X + One.X-1, Y + One.Y-2);
+
+  case One.Direction of
+    1: WriteBuf('^',One.X, One.Y-3);
+    2: WriteBuf('>',One.X+2, One.Y-1);
+    4: WriteBuf('<',One.X-2, One.Y-1);
+  end;
+
+  if Round(DemoTime) mod 2 = 0 then
+    Inc(One.Frame);
+  if One.Frame > 3 then One.Frame := 1;
+end;
 
 begin
   One.X := 10;
   One.Y := 1;
   One.HP := 100;
-  One.Frame := 0;
+  One.Frame := 1;
   One.Jump := 0;
   One.OnGround := False;
   One.Width := 3;
   One.Height := 3;
-  One.Sprites[1] := ' @ ';
-  One.Sprites[2] := '.#.';
-  One.Sprites[3] := '/~\';
-  One.Sprites[4] := ' @ ';
-  One.Sprites[5] := '''#,';
-  One.Sprites[6] := '[~\';
-  One.Sprites[7] := ' @ ';
-  One.Sprites[8] := '.#''';
-  One.Sprites[9] := '/~[';
+  One.Frames[1] := ' @ .#./~\';
+  One.Frames[2] := ' @ ''#,[~\';
+  One.Frames[3] := ' @ .#''/~[';
+  One.Resource := 5;
+  One.Score := 0;
+  One.Direction := 1;
 end.

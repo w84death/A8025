@@ -7,11 +7,12 @@ procedure MainCursorPressed(X,Y:Integer);
 procedure SettingsCursorPressed(X,Y:Integer);
 procedure MainEnterPressed;
 procedure SettingsEnterPressed;
+procedure Init;
 
 implementation
 
 uses
-  Config, State, Renderer, Rainbow;
+  Config, State, Renderer;
 
 var
   MenuPosition: Byte;
@@ -29,19 +30,20 @@ begin
   Writebuf(Chr(196)+Chr(175),X,Y+MenuPosition);
 end;
 
+procedure RenderHeader;
+begin
+    FColor := 3;
+    WriteBuf('codename', 4,1);
+    WriteBuf('P L A T U S   -   T H E   G A M E',4,2);
+    FColor := 7;
+    WriteBuf('Version 0.5',26,1);
+
+end;
+
 procedure MainRender(DemoTime: Real);
 begin
-    if Config.BackgroundEffects then
-    begin
-    Rainbow.Render(DemoTime);
-    end
-    else
     Renderer.ClearBuffer;
-
-    FColor := 15;
-    WriteBuf('  Ú  P L A T U S',10,5);
-    WriteBuf(' ¿³³Ú  the game ',10,6);
-    WriteBuf('ßßßßßßßßßßßßßßßßßßßV0.4ßßß',10,7);
+    RenderHeader;
 
     ClearLine(9+MenuPosition);
 
@@ -60,12 +62,9 @@ end;
 
 procedure SettingsRender(DemoTime: Real);
 begin
-    if Config.BackgroundEffects then
-    begin
-      Rainbow.Render(DemoTime);
-    end
-    else
-      Renderer.ClearBuffer;
+    Renderer.ClearBuffer;
+
+    RenderHeader;
 
     ClearLine(9+MenuPosition);
 
@@ -121,6 +120,9 @@ begin
     MenuPosition := (MenuPosition + Y)
 end;
 
-
+procedure Init;
 begin
+  MenuPosition := 0;
+end;
+
 end.
